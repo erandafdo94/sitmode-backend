@@ -9,6 +9,10 @@ public record GoogleSignInRequest([property: JsonPropertyName("id_token")] strin
 // Email/password sign-in (register + login). Client posts { email, password }.
 public record EmailAuthRequest(string Email, string Password);
 
+// Set/change the password on the currently authenticated account (e.g. a Google
+// user adding a password so they can also log in with email/password).
+public record SetPasswordRequest(string Password);
+
 // Sign-in returns an access token (short-lived JWT), a refresh token, the access
 // token lifetime in seconds, and the user profile.
 public record SignInResponse(

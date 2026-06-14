@@ -132,6 +132,26 @@ public class AuthController : ControllerBase
         return Ok(new { ok = true });
     }
 
+    // Set (or change) the password on the signed-in account. Lets a Google user
+    // add a password so they can also log in with their email + this password.
+    // The caller is already authenticated via JWT, so no current-password check.
+    [Authorize]
+    [HttpPost("set-password")]
+    public async Task<IActionResult> SetPassword([FromBody] SetPasswordRequest body, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(body.Password) || body.Password.Length < 8)
+            return BadRequest(new { error = "password must be at least 8 characters" });
+
+        var uid = User.UserId();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == uid, ct);
+        if (user is null) return NotFound();
+
+        user.PasswordHash = PasswordHasher.Hash(body.Password);
+        await _db.SaveChangesAsync(ct);
+        // Echo the email so the client can tell the user which address to log in with.
+        return Ok(new { ok = true, email = user.Email });
+    }
+
     [Authorize]
     [HttpGet("/api/me")]
     public async Task<IActionResult> Me(CancellationToken ct)

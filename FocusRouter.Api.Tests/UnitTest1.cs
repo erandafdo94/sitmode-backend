@@ -185,4 +185,32 @@ public class EmailAuthTests : IClassFixture<TestAppFactory>
         var login = await client.PostAsJsonAsync("/api/auth/login", new { email = "test@example.com", password = "secret123" });
         Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
     }
+
+    [Fact]
+    public async Task SetPassword_OnGoogleAccount_ThenEmailLoginWorks()
+    {
+        var client = _factory.CreateClient();
+
+        // Sign in with Google (creates test@example.com, no password).
+        var g = await client.PostAsJsonAsync("/api/auth/google", new { id_token = "anything" });
+        var token = JsonDocument.Parse(await g.Content.ReadAsStringAsync()).RootElement.GetProperty("token").GetString()!;
+
+        // set-password requires auth.
+        var unauth = await client.PostAsJsonAsync("/api/auth/set-password", new { password = "newpass123" });
+        Assert.Equal(HttpStatusCode.Unauthorized, unauth.StatusCode);
+
+        // Too-short password is rejected.
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var tooShort = await client.PostAsJsonAsync("/api/auth/set-password", new { password = "short" });
+        Assert.Equal(HttpStatusCode.BadRequest, tooShort.StatusCode);
+
+        // Set a valid password on the Google account.
+        var set = await client.PostAsJsonAsync("/api/auth/set-password", new { password = "newpass123" });
+        Assert.Equal(HttpStatusCode.OK, set.StatusCode);
+        client.DefaultRequestHeaders.Authorization = null;
+
+        // Now email/password login with the Google email works.
+        var login = await client.PostAsJsonAsync("/api/auth/login", new { email = "test@example.com", password = "newpass123" });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+    }
 }
