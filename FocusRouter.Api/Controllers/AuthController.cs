@@ -56,10 +56,60 @@ public class AuthController : ControllerBase
             await _db.SaveChangesAsync(ct);
         }
 
+        return await IssueSessionAsync(user, ct);
+    }
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] EmailAuthRequest body, CancellationToken ct)
+    {
+        var email = (body.Email ?? "").Trim().ToLowerInvariant();
+        if (!IsValidEmail(email))
+            return BadRequest(new { error = "valid email required" });
+        if (string.IsNullOrEmpty(body.Password) || body.Password.Length < 8)
+            return BadRequest(new { error = "password must be at least 8 characters" });
+
+        if (await _db.Users.AnyAsync(u => u.Email == email, ct))
+            return Conflict(new { error = "email already in use" });
+
+        var user = new User
+        {
+            Email = email,
+            PasswordHash = PasswordHasher.Hash(body.Password),
+            GoogleSub = null,
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync(ct);
+
+        return await IssueSessionAsync(user, ct);
+    }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] EmailAuthRequest body, CancellationToken ct)
+    {
+        var email = (body.Email ?? "").Trim().ToLowerInvariant();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        // Generic failure for unknown email, Google-only accounts, and wrong
+        // password alike — avoids leaking which emails exist.
+        if (user is null || user.PasswordHash is null || !PasswordHasher.Verify(body.Password ?? "", user.PasswordHash))
+            return Unauthorized(new { error = "invalid email or password" });
+
+        return await IssueSessionAsync(user, ct);
+    }
+
+    // Issues an access token + refresh token and returns the standard SignInResponse.
+    private async Task<IActionResult> IssueSessionAsync(User user, CancellationToken ct)
+    {
         var access = _jwt.IssueAccessToken(user.Id, user.Email, user.DisplayName, user.PictureUrl);
         var refresh = await _refresh.IssueAsync(user.Id, ct);
         var me = new MeDto(user.Id, user.Email, user.DisplayName, user.PictureUrl);
         return Ok(new SignInResponse(access, refresh, _jwt.AccessTokenSeconds, me));
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        try { _ = new System.Net.Mail.MailAddress(email); return true; }
+        catch (FormatException) { return false; }
     }
 
     [HttpPost("refresh")]

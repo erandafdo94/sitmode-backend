@@ -116,3 +116,73 @@ public class AuthLifecycleTests : IClassFixture<TestAppFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, get.StatusCode);
     }
 }
+
+public class EmailAuthTests : IClassFixture<TestAppFactory>
+{
+    private readonly TestAppFactory _factory;
+
+    public EmailAuthTests(TestAppFactory factory) => _factory = factory;
+
+    [Fact]
+    public async Task Register_ReturnsTokens_AndProtectsState()
+    {
+        var client = _factory.CreateClient();
+
+        var reg = await client.PostAsJsonAsync("/api/auth/register", new { email = "alice@example.com", password = "secret123" });
+        Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
+        var doc = JsonDocument.Parse(await reg.Content.ReadAsStringAsync());
+        var token = doc.RootElement.GetProperty("token").GetString()!;
+        Assert.False(string.IsNullOrWhiteSpace(token));
+        Assert.False(string.IsNullOrWhiteSpace(doc.RootElement.GetProperty("refresh_token").GetString()));
+        Assert.Equal("alice@example.com", doc.RootElement.GetProperty("user").GetProperty("email").GetString());
+
+        // The issued access token works against a protected route.
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/me")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_DuplicateEmail_Conflicts()
+    {
+        var client = _factory.CreateClient();
+        await client.PostAsJsonAsync("/api/auth/register", new { email = "dup@example.com", password = "secret123" });
+        var again = await client.PostAsJsonAsync("/api/auth/register", new { email = "dup@example.com", password = "secret123" });
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_ShortPassword_BadRequest()
+    {
+        var client = _factory.CreateClient();
+        var reg = await client.PostAsJsonAsync("/api/auth/register", new { email = "short@example.com", password = "short" });
+        Assert.Equal(HttpStatusCode.BadRequest, reg.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_GoodAndBadPassword()
+    {
+        var client = _factory.CreateClient();
+        await client.PostAsJsonAsync("/api/auth/register", new { email = "bob@example.com", password = "secret123" });
+
+        // Email is matched case-insensitively (normalized to lowercase on write).
+        var good = await client.PostAsJsonAsync("/api/auth/login", new { email = "BOB@example.com", password = "secret123" });
+        Assert.Equal(HttpStatusCode.OK, good.StatusCode);
+
+        var bad = await client.PostAsJsonAsync("/api/auth/login", new { email = "bob@example.com", password = "wrongpass" });
+        Assert.Equal(HttpStatusCode.Unauthorized, bad.StatusCode);
+
+        var unknown = await client.PostAsJsonAsync("/api/auth/login", new { email = "nobody@example.com", password = "secret123" });
+        Assert.Equal(HttpStatusCode.Unauthorized, unknown.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_AgainstGoogleOnlyAccount_Unauthorized()
+    {
+        var client = _factory.CreateClient();
+        // Stub Google verifier creates user test@example.com with no password.
+        await client.PostAsJsonAsync("/api/auth/google", new { id_token = "anything" });
+
+        var login = await client.PostAsJsonAsync("/api/auth/login", new { email = "test@example.com", password = "secret123" });
+        Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
+    }
+}

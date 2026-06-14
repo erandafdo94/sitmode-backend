@@ -16,7 +16,10 @@ public class AppDbContext : DbContext
         b.Entity<User>(e =>
         {
             e.ToTable("users");
-            e.HasIndex(x => x.GoogleSub).IsUnique();
+            // Filtered so multiple email/password users (null GoogleSub) are allowed.
+            e.HasIndex(x => x.GoogleSub).IsUnique().HasFilter("\"GoogleSub\" IS NOT NULL");
+            // Email is the login identity; kept unique (normalized to lowercase on write).
+            e.HasIndex(x => x.Email).IsUnique();
         });
 
         b.Entity<UserState>(e =>

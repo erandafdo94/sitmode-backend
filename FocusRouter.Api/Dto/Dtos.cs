@@ -6,6 +6,9 @@ namespace FocusRouter.Api.Dto;
 // Client posts snake_case { id_token }.
 public record GoogleSignInRequest([property: JsonPropertyName("id_token")] string IdToken);
 
+// Email/password sign-in (register + login). Client posts { email, password }.
+public record EmailAuthRequest(string Email, string Password);
+
 // Sign-in returns an access token (short-lived JWT), a refresh token, the access
 // token lifetime in seconds, and the user profile.
 public record SignInResponse(
