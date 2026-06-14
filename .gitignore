@@ -1,0 +1,19 @@
+# Build output
+**/bin/
+**/obj/
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+
+# OS
+.DS_Store
+
+# Local secrets / overrides
+appsettings.Local.json
+*.local.json
+
+# EF Core scaffolded files we don't want
+*.lutconfig
