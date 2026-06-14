@@ -22,11 +22,14 @@ public record SignInResponse(
     MeDto User);
 
 // Client reads user.email / user.name / user.picture — map DisplayName/PictureUrl accordingly.
+// has_password tells the client whether to offer "set a password" (Google-only
+// accounts have none yet).
 public record MeDto(
     Guid Id,
     string Email,
     [property: JsonPropertyName("name")] string? DisplayName,
-    [property: JsonPropertyName("picture")] string? PictureUrl);
+    [property: JsonPropertyName("picture")] string? PictureUrl,
+    [property: JsonPropertyName("has_password")] bool HasPassword);
 
 public record RefreshRequest([property: JsonPropertyName("refresh_token")] string RefreshToken);
 public record RefreshResponse(

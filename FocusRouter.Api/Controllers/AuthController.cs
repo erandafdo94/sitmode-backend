@@ -101,7 +101,7 @@ public class AuthController : ControllerBase
     {
         var access = _jwt.IssueAccessToken(user.Id, user.Email, user.DisplayName, user.PictureUrl);
         var refresh = await _refresh.IssueAsync(user.Id, ct);
-        var me = new MeDto(user.Id, user.Email, user.DisplayName, user.PictureUrl);
+        var me = new MeDto(user.Id, user.Email, user.DisplayName, user.PictureUrl, user.PasswordHash != null);
         return Ok(new SignInResponse(access, refresh, _jwt.AccessTokenSeconds, me));
     }
 
@@ -159,6 +159,6 @@ public class AuthController : ControllerBase
         var uid = User.UserId();
         var u = await _db.Users.FirstOrDefaultAsync(x => x.Id == uid, ct);
         if (u is null) return NotFound();
-        return Ok(new MeDto(u.Id, u.Email, u.DisplayName, u.PictureUrl));
+        return Ok(new MeDto(u.Id, u.Email, u.DisplayName, u.PictureUrl, u.PasswordHash != null));
     }
 }
