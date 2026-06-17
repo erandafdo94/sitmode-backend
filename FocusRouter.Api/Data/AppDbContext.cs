@@ -10,6 +10,8 @@ public class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<UserState> UserStates => Set<UserState>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Habit> Habits => Set<Habit>();
+    public DbSet<HabitCompletion> HabitCompletions => Set<HabitCompletion>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -36,6 +38,24 @@ public class AppDbContext : DbContext
             e.HasIndex(x => x.TokenHash).IsUnique();
             e.HasIndex(x => x.UserId);
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Habit>(e =>
+        {
+            e.ToTable("habits");
+            // Persist the enum as readable text ("Daily"/"Weekly") rather than an int.
+            e.Property(x => x.Kind).HasConversion<string>();
+            e.HasIndex(x => x.UserId);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<HabitCompletion>(e =>
+        {
+            e.ToTable("habit_completions");
+            // One check-in per habit per day; makes check-ins idempotent toggles.
+            e.HasIndex(x => new { x.HabitId, x.Date }).IsUnique();
+            e.HasOne(x => x.Habit).WithMany(h => h.Completions)
+                .HasForeignKey(x => x.HabitId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
