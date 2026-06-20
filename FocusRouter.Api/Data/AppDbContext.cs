@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Habit> Habits => Set<Habit>();
     public DbSet<HabitCompletion> HabitCompletions => Set<HabitCompletion>();
+    public DbSet<Goal> Goals => Set<Goal>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -56,6 +57,19 @@ public class AppDbContext : DbContext
             e.HasIndex(x => new { x.HabitId, x.Date }).IsUnique();
             e.HasOne(x => x.Habit).WithMany(h => h.Completions)
                 .HasForeignKey(x => x.HabitId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Goal>(e =>
+        {
+            e.ToTable("goals");
+            // Persist both enums as readable text rather than ints.
+            e.Property(x => x.Horizon).HasConversion<string>();
+            e.Property(x => x.Status).HasConversion<string>();
+            e.HasIndex(x => x.UserId);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            // Self-referencing up-link. Deleting a parent orphans its children
+            // (ParentGoalId -> null) rather than cascade-deleting the ladder below.
+            e.HasOne<Goal>().WithMany().HasForeignKey(x => x.ParentGoalId).OnDelete(DeleteBehavior.SetNull);
         });
     }
 }
