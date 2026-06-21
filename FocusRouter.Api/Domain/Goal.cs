@@ -30,6 +30,9 @@ public class Goal
     // SMART "time-bound".
     public DateOnly? DueDate { get; set; }
     public GoalStatus Status { get; set; } = GoalStatus.Active;
+    // Set when the goal transitions to Completed (cleared if it leaves Completed).
+    // Drives the achievement history / "achieved over time" view on the client.
+    public DateTimeOffset? CompletedAt { get; set; }
     // Reminders-style identity colour (hex) + optional emoji, for the UI.
     public string? Color { get; set; }
     public string? Icon { get; set; }

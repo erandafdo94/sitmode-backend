@@ -99,6 +99,12 @@ public class GoalsController : ControllerBase
         if (body.Status is not null)
         {
             if (!TryParseStatus(body.Status, out var s)) return BadRequest(new { error = "invalid status" });
+            // Stamp the achievement time on the transition into Completed; clear it
+            // if the goal moves back out of Completed.
+            if (s == GoalStatus.Completed && goal.Status != GoalStatus.Completed)
+                goal.CompletedAt = DateTimeOffset.UtcNow;
+            else if (s != GoalStatus.Completed)
+                goal.CompletedAt = null;
             goal.Status = s;
         }
         if (body.TargetValue is not null) goal.TargetValue = body.TargetValue;
@@ -165,6 +171,6 @@ public class GoalsController : ControllerBase
         return new GoalDto(
             g.Id, g.Title, g.Description, g.Horizon.ToString(), g.ParentGoalId,
             g.TargetValue, g.CurrentValue, g.Unit, g.DueDate, g.Status.ToString(),
-            g.Color, g.Icon, g.SortOrder, g.Archived, pct);
+            g.Color, g.Icon, g.SortOrder, g.Archived, g.CompletedAt, pct);
     }
 }

@@ -120,6 +120,13 @@ public class GoalsApiTests : IClassFixture<TestAppFactory>
         Assert.Equal("Read 12 books", g.GetProperty("title").GetString());
         Assert.Equal("Completed", g.GetProperty("status").GetString());
         Assert.Equal(50, g.GetProperty("progressPct").GetInt32());
+        // Completing stamps an achievement time...
+        Assert.NotEqual(JsonValueKind.Null, g.GetProperty("completedAt").ValueKind);
+
+        // ...and moving back to Active clears it.
+        var reopen = await client.PutAsJsonAsync($"/api/goals/{id}", new { status = "Active" });
+        var g2 = JsonDocument.Parse(await reopen.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal(JsonValueKind.Null, g2.GetProperty("completedAt").ValueKind);
     }
 
     [Fact]
