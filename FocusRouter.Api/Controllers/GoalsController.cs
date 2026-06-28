@@ -171,6 +171,6 @@ public class GoalsController : ControllerBase
         return new GoalDto(
             g.Id, g.Title, g.Description, g.Horizon.ToString(), g.ParentGoalId,
             g.TargetValue, g.CurrentValue, g.Unit, g.DueDate, g.Status.ToString(),
-            g.Color, g.Icon, g.SortOrder, g.Archived, g.CompletedAt, pct);
+            g.Color, g.Icon, g.SortOrder, g.Archived, g.CreatedAt, g.CompletedAt, pct);
     }
 }

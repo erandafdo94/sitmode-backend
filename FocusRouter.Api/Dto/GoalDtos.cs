@@ -50,5 +50,6 @@ public record GoalDto(
     string? Icon,
     int SortOrder,
     bool Archived,
+    DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt,
     int? ProgressPct);
